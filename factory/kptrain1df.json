@@ -1,0 +1,9 @@
+{
+	"name": "kptrain1df",
+	"location": "southindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "d413bced-6920-4f43-b01c-69b2fd5676f8",
+		"tenantId": "f40fd080-bf25-4cce-b565-0493bee21bf9"
+	}
+}

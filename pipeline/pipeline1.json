@@ -1,0 +1,325 @@
+{
+	"name": "pipeline1",
+	"properties": {
+		"activities": [
+			{
+				"name": "get all file details",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "DelimitedText1",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ReadFiles",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "get all file details",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('get all file details').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Get Metadata Current file",
+							"type": "GetMetadata",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "currentdata_set",
+									"type": "DatasetReference",
+									"parameters": {
+										"fileSystem": {
+											"value": "@item().fileSystem",
+											"type": "Expression"
+										},
+										"Directory": {
+											"value": "@item().folderPath",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@item().File_name",
+											"type": "Expression"
+										}
+									}
+								},
+								"fieldList": [
+									"structure",
+									"itemName"
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							}
+						},
+						{
+							"name": "Get Metadata of referance dataset",
+							"type": "GetMetadata",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "referance_dataset",
+									"type": "DatasetReference"
+								},
+								"fieldList": [
+									"structure"
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							}
+						},
+						{
+							"name": "IF SCHEMA STURCTURE MATCH",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Get Metadata Current file",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "Get Metadata of referance dataset",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(activity('Get Metadata Current file').output.structure,activity('Get Metadata of referance dataset').output.structure)",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Copy data3",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "DelimitedTextSource",
+												"storeSettings": {
+													"type": "AzureBlobFSReadSettings",
+													"recursive": true,
+													"enablePartitionDiscovery": false
+												},
+												"formatSettings": {
+													"type": "DelimitedTextReadSettings"
+												}
+											},
+											"sink": {
+												"type": "DelimitedTextSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings"
+												},
+												"formatSettings": {
+													"type": "DelimitedTextWriteSettings",
+													"quoteAllText": true,
+													"fileExtension": ".txt"
+												}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "currentdata_set",
+												"type": "DatasetReference",
+												"parameters": {
+													"fileSystem": "kp-train1-ca",
+													"Directory": "Sales",
+													"FileName": {
+														"value": "@activity('Get Metadata Current file').output.itemName",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DelimitedText3",
+												"type": "DatasetReference",
+												"parameters": {
+													"filename": {
+														"value": "@activity('Get Metadata Current file').output.itemName",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "Copy data2",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "DelimitedTextSource",
+												"storeSettings": {
+													"type": "AzureBlobFSReadSettings",
+													"recursive": true,
+													"enablePartitionDiscovery": false
+												},
+												"formatSettings": {
+													"type": "DelimitedTextReadSettings"
+												}
+											},
+											"sink": {
+												"type": "DelimitedTextSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings",
+													"copyBehavior": "MergeFiles"
+												},
+												"formatSettings": {
+													"type": "DelimitedTextWriteSettings",
+													"quoteAllText": true,
+													"fileExtension": ".txt"
+												}
+											},
+											"enableStaging": false,
+											"logSettings": {
+												"enableCopyActivityLog": true,
+												"copyActivityLogSettings": {
+													"logLevel": "Info",
+													"enableReliableLogging": false
+												},
+												"logLocationSettings": {
+													"linkedServiceName": {
+														"referenceName": "AzureDataLakeStorage1",
+														"type": "LinkedServiceReference"
+													}
+												}
+											},
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "currentdata_set",
+												"type": "DatasetReference",
+												"parameters": {
+													"fileSystem": "kp-train1-ca",
+													"Directory": "Sales",
+													"FileName": {
+														"value": "@activity('Get Metadata Current file').output.itemName",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DelimitedText2",
+												"type": "DatasetReference",
+												"parameters": {
+													"filename": {
+														"value": "@activity('Get Metadata Current file').output.itemName",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2024-06-03T20:17:01Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

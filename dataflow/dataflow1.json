@@ -1,0 +1,126 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText4",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText5",
+						"type": "DatasetReference"
+					},
+					"name": "WithNullError"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimCity",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimProduct",
+						"type": "DatasetReference"
+					},
+					"name": "sink2"
+				}
+			],
+			"transformations": [
+				{
+					"name": "split1"
+				},
+				{
+					"name": "deriveColumns"
+				},
+				{
+					"name": "DimProduct"
+				},
+				{
+					"name": "DimProductShrink"
+				},
+				{
+					"name": "DimCity"
+				},
+				{
+					"name": "select1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          {_c0} as short,",
+				"          {Order ID} as string,",
+				"          Product as string,",
+				"          {Quantity Ordered} as short,",
+				"          {Price Each} as string,",
+				"          {Order Date} as string,",
+				"          {Purchase Address} as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 split(isNull(Product) || isNull({Quantity Ordered}) || isNull({Price Each}) || isNull({Order ID}) || isNull({Order Date}) || isNull({Purchase Address}),",
+				"     disjoint: false) ~> split1@(ErrorWithNull, Clean)",
+				"split1@Clean derive(zipcod = split({Purchase Address},',')[3],",
+				"          state = split({Purchase Address},' ')[5],",
+				"          city = split({Purchase Address},',')[2],",
+				"          street = split({Purchase Address},\",\")[1]) ~> deriveColumns",
+				"deriveColumns select(mapColumn(",
+				"          Product,",
+				"          {Price Each}",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> DimProduct",
+				"DimProduct derive(ProductId = concat(substring(Product, 1, 3),{Price Each})) ~> DimProductShrink",
+				"deriveColumns select(mapColumn(",
+				"          zipcod,",
+				"          state,",
+				"          city",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> DimCity",
+				"deriveColumns select(mapColumn(",
+				"          {Order ID},",
+				"          Product,",
+				"          {Quantity Ordered},",
+				"          {Price Each},",
+				"          {Order Date},",
+				"          zipcod,",
+				"          street",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"split1@ErrorWithNull sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> WithNullError",
+				"DimCity sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> sink1",
+				"DimProductShrink sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> sink2"
+			]
+		}
+	}
+}
